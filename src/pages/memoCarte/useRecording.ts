@@ -176,21 +176,22 @@ let audioFeedback: HTMLAudioElement | null = null
 if (typeof window !== 'undefined') {
   audioFeedback = new Audio()
   
-  // Use absolute path from root for production
-  const baseUrl = window.location.origin
+  // Get base URL and normalize it
+  const baseUrl = window.location.origin.replace(/\/$/, '')
   console.log('🔍 Base URL:', baseUrl)
   
-  // Define audio formats with normalized paths
+  // Define possible audio file locations
   const audioFormats = [
-    // Try with normalized paths first
+    // Production paths
     `${baseUrl}/assets/sounds/japan-feedback-voice.mp3`,
     `${baseUrl}/sounds/japan-feedback-voice.mp3`,
-    // Then try with relative paths
+    // Development paths
     '/assets/sounds/japan-feedback-voice.mp3',
     '/sounds/japan-feedback-voice.mp3',
     'sounds/japan-feedback-voice.mp3',
-    // Fallback to direct path
-    'japan-feedback-voice.mp3'
+    // Fallback paths
+    '/assets/sounds/japan-feedback-voice.mp3',
+    'assets/sounds/japan-feedback-voice.mp3'
   ]
   
   console.log('📝 Trying audio formats:', audioFormats)
@@ -209,11 +210,14 @@ if (typeof window !== 'undefined') {
       triedSources.push(nextSource)
       console.log('🔄 Retrying with next source:', nextSource)
       
-      // Add timestamp to prevent caching issues
-      const timestamp = new Date().getTime()
-      const sourceWithCache = `${nextSource}?t=${timestamp}`
+      // Ensure the source is properly formatted
+      const formattedSource = nextSource.startsWith('http') ? 
+        nextSource : 
+        nextSource.startsWith('/') ? 
+          `${baseUrl}${nextSource}` : 
+          `${baseUrl}/${nextSource}`
       
-      audioFeedback.src = sourceWithCache
+      audioFeedback.src = formattedSource
       audioFeedback.load()
       retryCount++
       
@@ -221,11 +225,10 @@ if (typeof window !== 'undefined') {
         console.warn('⚠️ Max retries reached, attempts made with sources:', {
           baseUrl,
           triedSources,
-          finalAttempt: nextSource
+          finalAttempt: formattedSource
         })
-        // Try one last time with absolute path and cache busting
-        const finalSource = `${baseUrl}/assets/sounds/japan-feedback-voice.mp3?t=${timestamp}`
-        audioFeedback.src = finalSource
+        // Try one last time with absolute path
+        audioFeedback.src = `${baseUrl}/assets/sounds/japan-feedback-voice.mp3`
         audioFeedback.load()
       }
     } else {
@@ -261,9 +264,8 @@ if (typeof window !== 'undefined') {
     console.log('🎵 Audio is playing')
   })
   
-  // Set initial source with absolute path and cache busting
-  const timestamp = new Date().getTime()
-  audioFeedback.src = `${baseUrl}/assets/sounds/japan-feedback-voice.mp3?t=${timestamp}`
+  // Set initial source with absolute path
+  audioFeedback.src = `${baseUrl}/assets/sounds/japan-feedback-voice.mp3`
   audioFeedback.preload = 'auto'
   
   // Force load for Windows compatibility
