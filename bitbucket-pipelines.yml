@@ -1,0 +1,14 @@
+pipelines:
+  pull-requests:
+    '**':
+      - step:
+          name: Pre-Build
+          image: node:18.18.2
+          caches:
+            - node
+          script:
+            - echo "Clearing the npm cache..."
+            - npm cache clean --force
+            - npm ci  # Install dependencies from package-lock.json
+            - echo "API_URL=$API_URL" >> .env  # Manually add API_URL to .env
+            - npx vite build --mode dev 
