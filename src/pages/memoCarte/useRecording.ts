@@ -73,7 +73,7 @@ interface FormattedDataType {
 
 const feedbackData = ref<FormattedDataType[]>([])
 const recordingLimit = ref(25 * 60) 
-// const recordingLimit = ref(20) 
+//const recordingLimit = ref(20) 
 
 
 interface TranscriptData {
@@ -174,121 +174,18 @@ const isVoiceCommand = ref(false)
 let audioFeedback: HTMLAudioElement | null = null
 
 if (typeof window !== 'undefined') {
-  audioFeedback = new Audio()
-  
-  // Get base URL and normalize it
-  const baseUrl = window.location.origin.replace(/\/$/, '')
-  console.log('🔍 Base URL:', baseUrl)
-  
-  // Define possible audio file locations
-  const audioFormats = [
-    // Production paths
-    `${baseUrl}/assets/sounds/japan-feedback-voice.mp3`,
-    `${baseUrl}/sounds/japan-feedback-voice.mp3`,
-    // Development paths
-    '/assets/sounds/japan-feedback-voice.mp3',
-    '/sounds/japan-feedback-voice.mp3',
-    'sounds/japan-feedback-voice.mp3',
-    // Fallback paths
-    '/assets/sounds/japan-feedback-voice.mp3',
-    'assets/sounds/japan-feedback-voice.mp3'
-  ]
-  
-  console.log('📝 Trying audio formats:', audioFormats)
-
-  let isAudioLoaded = false
-  let retryCount = 0
-  const MAX_RETRIES = 3
-  const triedSources: string[] = []
-
-  const handleAudioError = (err: any) => {
-    console.error('Audio loading error for source:', audioFeedback?.src)
-    console.error('Error details:', err)
-    
-    if (audioFormats.length > 0 && audioFeedback) {
-      const nextSource = audioFormats.shift()!
-      triedSources.push(nextSource)
-      console.log('🔄 Retrying with next source:', nextSource)
-      
-      // Ensure the source is properly formatted
-      const formattedSource = nextSource.startsWith('http') ? 
-        nextSource : 
-        nextSource.startsWith('/') ? 
-          `${baseUrl}${nextSource}` : 
-          `${baseUrl}/${nextSource}`
-      
-      audioFeedback.src = formattedSource
-      audioFeedback.load()
-      retryCount++
-      
-      if (retryCount >= MAX_RETRIES) {
-        console.warn('⚠️ Max retries reached, attempts made with sources:', {
-          baseUrl,
-          triedSources,
-          finalAttempt: formattedSource
-        })
-        // Try one last time with absolute path
-        audioFeedback.src = `${baseUrl}/assets/sounds/japan-feedback-voice.mp3`
-        audioFeedback.load()
-      }
-    } else {
-      console.error('❌ No more audio formats to try. All attempts failed')
-      console.error('Failed sources:', triedSources)
-    }
-  }
-
-  const handleAudioSuccess = () => {
-    if (!audioFeedback) return
-    console.log('✅ Audio loaded successfully from:', audioFeedback.src)
-    isAudioLoaded = true
-    audioFeedback.removeEventListener('error', handleAudioError)
-    audioFeedback.removeEventListener('loadeddata', handleAudioSuccess)
-  }
-
-  const handleAudioPlayError = (err: any) => {
-    console.error('Audio play error:', err)
-    // Try to play again with a slight delay
-    setTimeout(() => {
-      if (audioFeedback && isAudioLoaded) {
-        audioFeedback.play().catch(console.error)
-      }
-    }, 100)
-  }
-
-  audioFeedback.addEventListener('error', handleAudioError)
-  audioFeedback.addEventListener('loadeddata', handleAudioSuccess)
-  audioFeedback.addEventListener('play', () => {
-    console.log('🎵 Audio started playing')
-  })
-  audioFeedback.addEventListener('playing', () => {
-    console.log('🎵 Audio is playing')
-  })
-  
-  // Set initial source with absolute path
-  audioFeedback.src = `${baseUrl}/assets/sounds/japan-feedback-voice.mp3`
+  audioFeedback = new Audio('/sounds/japan-feedback-voice.mp3')
   audioFeedback.preload = 'auto'
-  
-  // Force load for Windows compatibility
-  audioFeedback.load()
+}
 
-  // Override the play method to add error handling
-  const originalPlay = audioFeedback.play
-  audioFeedback.play = function() {
-    if (!isAudioLoaded) {
-      console.warn('Audio not loaded yet, waiting...')
-      return new Promise((resolve, reject) => {
-        const checkLoaded = setInterval(() => {
-          if (isAudioLoaded) {
-            clearInterval(checkLoaded)
-            originalPlay.call(this)
-              .then(resolve)
-              .catch(handleAudioPlayError)
-          }
-        }, 100)
-      })
+const playAudioFeedback = async () => {
+  try {
+    if (audioFeedback) {
+      audioFeedback.currentTime = 0
+      await audioFeedback.play()
     }
-    return originalPlay.call(this)
-      .catch(handleAudioPlayError)
+  } catch (error) {
+    console.error('Error playing audio feedback:', error)
   }
 }
 
@@ -338,7 +235,8 @@ const startRecording = async () => {
         const transcript = event.results[i][0].transcript.trim().toLowerCase()
         
         const numberPattern = /(3|三|さん|san|three|３).*(2|二|に|ni|two|２).*(1|一|いち|ichi|one|１).*(?:終了|しゅうりょう)/i
-                
+        
+        
         if (numberPattern.test(transcript)) {
           isVoiceCommand.value = true
           voiceCommandStartTime = Date.now()
@@ -394,8 +292,7 @@ const startRecording = async () => {
     }
 
     recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error) // Debug log
-      // Additional error handling logic can be added here
+      console.error('Speech recognition error:', event.error)
     }
   }
 }
